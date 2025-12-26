@@ -58,7 +58,7 @@ def load_dream_model():
     # Using device_map="cuda:0" to be exact.
     base_model = AutoModelForCausalLM.from_pretrained(
         config.MODEL_ID,
-        load_in_4bit=True
+        load_in_4bit=True,
         device_map="cuda:0", # Forcing exact device
     )
     dream_tokenizer = AutoTokenizer.from_pretrained(config.MODEL_ID)
