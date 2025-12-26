@@ -237,10 +237,17 @@ def chat_with_gemma(message, history):
         response_text = tokenizer.decode(outputs[0][input_length:], skip_special_tokens=True)
         logging.info(f"Model generated response: '{response_text[:100]}...'")
         conversation_history.append({"role": "assistant", "content": response_text})
+    # In your main script, around the model.generate() call
     except Exception as e:
-        logging.error("🔥🔥🔥 AN EXCEPTION OCCURRED DURING MODEL GENERATION 🔥🔥🔥")
-        logging.error(traceback.format_exc())
-        return f"Sorry, a critical error occurred. A full traceback has been written to app.log. Error: {e}"
+        error_message = f"Sorry, a critical error occurred. A full traceback has been written to app.log. Error: {e}"
+        try:
+            logging.error("🔥🔥🔥 AN EXCEPTION OCCURRED DURING MODEL GENERATION 🔥🔥🔥")
+            logging.error(traceback.format_exc())
+        except ValueError as ve:
+            # Catch the specific error: I/O operation on closed file
+            print(f"FATAL LOGGING ERROR: Could not write to log file/stream. Original error: {e}, Logging error: {ve}", file=sys.stderr)
+            pass # Continue execution despite logging failure
+        return error_message
     return response_text
 
 def initialize_system():
