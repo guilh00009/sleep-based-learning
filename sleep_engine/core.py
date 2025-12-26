@@ -20,6 +20,31 @@ def force_cleanup():
     gc.collect()
     torch.cuda.empty_cache()
 
+# --- Adicione esta função helper no início ou junto com as outras funções ---
+def clean_text(text):
+    """
+    Remove caracteres 'surrogates' que quebram o log/save do Python.
+    Também força a codificação para UTF-8 ignorando erros.
+    """
+    if isinstance(text, str):
+        # Primeiro encode/decode para remover bytes inválidos
+        text = text.encode('utf-8', 'ignore').decode('utf-8')
+        # Depois encode/decode para remover surrogates isolados (o erro específico que vc teve)
+        return text.encode('utf-16', 'surrogatepass').decode('utf-16').encode('utf-8', 'replace').decode('utf-8')
+    return text
+
+def clean_data_recursive(data):
+    """Aplica a limpeza em listas e dicionários recursivamente."""
+    if isinstance(data, dict):
+        return {k: clean_data_recursive(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [clean_data_recursive(item) for item in data]
+    elif isinstance(data, str):
+        return clean_text(data)
+    else:
+        return data
+
+# --- Sua função sleep_and_dream atualizada ---
 def sleep_and_dream():
     """
     Implements the continual learning strategy with VRAM safety for Colab.
@@ -54,12 +79,16 @@ def sleep_and_dream():
         # OTIMIZAÇÃO: Reduzi dream_count de 17 para 5. 
         # 17 sonhos x 2048 tokens = estouro de memória no treinamento depois.
         logging.info("--> Generating dreams (Reduced count for Colab stability)...")
-        new_dream_data = dreaming.generate_dreams(
+        raw_dream_data = dreaming.generate_dreams(
             dream_model, 
             dream_tokenizer, 
             formatted_history, 
-            dream_count=17
+            dream_count=11
         )
+
+
+        logging.info("--> Sanitizing generated dreams (removing bad unicode/emojis)...")
+        new_dream_data = clean_data_recursive(raw_dream_data)
         
         # Limpeza Imediata do Modelo de Sonho
         del dream_model
