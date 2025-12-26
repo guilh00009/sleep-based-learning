@@ -57,16 +57,14 @@ def load_dream_model():
         login(token=config.HF_TOKEN)
 
     # Using device_map="cuda:0" to be exact.
-    base_model, dream_tokenizer = FastLanguageModel.from_pretrained(
-        model_name = config.MODEL_ID, # YOUR MODEL YOU USED FOR TRAINING
+    dream_model, dream_tokenizer = FastLanguageModel.from_pretrained(
+        model_name="Guilherme34/dreamgen", # YOUR MODEL YOU USED FOR TRAINING
         max_seq_length=4096,
-        dtype = dtype,
+        dtype="Float16",
         load_in_4bit=True,
         device_map="cuda:0",
     )
-    FastLanguageModel.for_inference(model)
+    FastLanguageModel.for_inference(dream_model)
     logging.info(f"--> Loading dream generation LoRA from: {config.DREAM_GEN_LORA_PATH}")
-    dream_model = PeftModel.from_pretrained(base_model, config.DREAM_GEN_LORA_PATH)
-    
     logging.info("✅ Dream generation model is ready.")
     return dream_model, dream_tokenizer
