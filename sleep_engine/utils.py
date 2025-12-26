@@ -9,13 +9,14 @@ LOGGING_CONFIGURED = False
 
 def setup_logging():
     """
-    Sets up logging. It's safe to call this multiple times; it will only run once per process.
+    Sets up logging. Safe to call multiple times.
     """
     global LOGGING_CONFIGURED
     if LOGGING_CONFIGURED:
         return
 
     log_file = "app.log"
+    # Force flushing to ensure logs appear immediately in Colab
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     
@@ -23,44 +24,91 @@ def setup_logging():
         logger.handlers.clear()
 
     try:
-        # Use 'a' (append) mode so we don't wipe the log on every setup
         file_handler = logging.FileHandler(log_file, mode='a')
-        # Adding [%(process)d] to the format to see which process is logging
-        formatter = logging.Formatter("%(asctime)s [%(levelname)s] [%(process)d] %(message)s")
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     except (IOError, PermissionError) as e:
-        print(f"!!! CRITICAL LOGGING ERROR: COULD NOT WRITE TO {log_file} !!! Error: {e}", file=sys.stderr)
+        print(f"!!! LOG ERROR: {e}", file=sys.stderr)
         
     stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] [%(process)d] %(message)s"))
+    stream_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(stream_handler)
     
     LOGGING_CONFIGURED = True
-    logging.info("Robust logging configured for this process.")
+    logging.info("Logging configured.")
 
 class LoggingCallback(TrainerCallback):
     """
-    A custom callback that logs the loss to our app.log file at each logging step.
+    A custom callback that logs the loss to app.log at each logging step.
     """
     def on_log(self, args, state, control, logs=None, **kwargs):
-        # This method is called by the Trainer every `logging_steps`.
         if logs is not None:
-            # The 'logs' dictionary contains the metrics like loss, learning_rate, etc.
             loss = logs.get("loss")
             if loss is not None:
-                # Use our globally configured logger to write the loss.
                 logging.info(f"Training Step: {state.global_step}, Loss: {loss:.4f}")
+                # Força o Python a liberar referências do dicionário de logs imediatamente
+                del logs 
+                gc.collect()
 
 def release_gpu_memory(model=None, tokenizer=None):
-    """Completely releases the model and empties the GPU cache."""
-    logging.info("--> Releasing GPU memory...")
+    """
+    Completely releases memory using aggressive cleanup strategies specific for Colab.
+    """
+    logging.info("--> Releasing GPU memory (Nuclear Mode)...")
     
+    # 1. Delete explicit objects
     if model is not None:
+        # Move para CPU antes de deletar (ajuda a desfragmentar às vezes)
+        try:
+            model.cpu() 
+        except: 
+            pass
         del model
+        
     if tokenizer is not None:
         del tokenizer
-        
-    gc.collect()
+
+    # 2. CLEAR GHOST REFERENCES (Crucial para Colab/Jupyter)
+    # Jupyter guarda o output das células em variáveis como _, __, Out.
+    # Se você retornou o modelo em alguma célula anterior, ele ainda está na memória!
+    try:
+        import sys
+        # Limpa tracebacks de erros anteriores (que seguram referências de objetos)
+        if hasattr(sys, 'last_traceback'):
+            del sys.last_traceback
+        if hasattr(sys, 'last_type'):
+            del sys.last_type
+        if hasattr(sys, 'last_value'):
+            del sys.last_value
+            
+        # Tenta limpar histórico do IPython se estiver rodando num notebook
+        from IPython import get_ipython
+        ip = get_ipython()
+        if ip:
+            # Limpa cache de output
+            ip.displayhook.prompt_count -= 1
+            if 'Out' in ip.user_ns:
+                ip.user_ns['Out'] = {}
+            # Limpa variáveis temporárias comuns do shell interativo
+            for hidden in ['_', '__', '___']:
+                if hidden in ip.user_ns:
+                    del ip.user_ns[hidden]
+    except ImportError:
+        pass # Não estamos no Colab/Jupyter, segue a vida
+    except Exception as e:
+        logging.warning(f"Could not clear IPython cache: {e}")
+
+    # 3. Garbage Collection Agressivo
+    # Rodar várias vezes ajuda a pegar referências circulares
+    for _ in range(3):
+        gc.collect()
+    
+    # 4. Limpeza CUDA
     torch.cuda.empty_cache()
+    try:
+        torch.cuda.ipc_collect() # Limpeza extra de memória compartilhada
+    except:
+        pass
+        
     logging.info("--> GPU memory released.")
