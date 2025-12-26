@@ -1,3 +1,5 @@
+import unsloth
+from unsloth import FastLanguageModel
 import os
 import torch
 import logging
@@ -5,8 +7,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 from huggingface_hub import login
 from . import config
-import unsloth
-from unsloth import FastLanguageModel
 
 def load_chat_model(force_original=False):
     """
