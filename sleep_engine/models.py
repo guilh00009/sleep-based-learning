@@ -5,6 +5,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 from huggingface_hub import login
 from . import config
+from unsloth import FastLanguageModel
 
 def load_chat_model(force_original=False):
     """
@@ -56,13 +57,14 @@ def load_dream_model():
         login(token=config.HF_TOKEN)
 
     # Using device_map="cuda:0" to be exact.
-    base_model = AutoModelForCausalLM.from_pretrained(
-        config.MODEL_ID,
+    base_model, dream_tokenizer = FastLanguageModel.from_pretrained(
+        model_name = config.MODEL_ID, # YOUR MODEL YOU USED FOR TRAINING
+        max_seq_length=4096,
+        dtype = dtype,
         load_in_4bit=True,
-        device_map="cuda:0", # Forcing exact device
+        device_map="cuda:0",
     )
-    dream_tokenizer = AutoTokenizer.from_pretrained(config.MODEL_ID)
-
+    FastLanguageModel.for_inference(model)
     logging.info(f"--> Loading dream generation LoRA from: {config.DREAM_GEN_LORA_PATH}")
     dream_model = PeftModel.from_pretrained(base_model, config.DREAM_GEN_LORA_PATH)
     
