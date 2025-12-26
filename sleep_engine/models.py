@@ -59,7 +59,7 @@ def load_dream_model():
     base_model = AutoModelForCausalLM.from_pretrained(
         config.MODEL_ID,
         torch_dtype=torch.bfloat16,
-        device_map="cuda:0", # Forcing exact device
+        device_map="cuda", # Forcing exact device
     )
     dream_tokenizer = AutoTokenizer.from_pretrained(config.MODEL_ID)
 
