@@ -46,7 +46,7 @@ def train_on_dreams(model_to_train, tokenizer_local, dream_data):
         gradient_accumulation_steps=4,
         learning_rate=2e-4,
         lr_scheduler_type="cosine", warmup_ratio=0.03, optim="paged_adamw_8bit",
-        bf16=True, tf32=True, logging_steps=1, save_strategy="epoch",
+        bf16=True, logging_steps=1, save_strategy="epoch",
     )
     
     trainer = SFTTrainer(
