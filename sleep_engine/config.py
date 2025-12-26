@@ -7,7 +7,7 @@ load_dotenv()
 # Constants
 HF_TOKEN = os.getenv("HF_TOKEN")
 MODEL_ID = "Guilherme34/Firefly-V2"
-DREAM_GEN_LORA_PATH = "./dream-gen-lora-v4"
+DREAM_GEN_LORA_PATH = "Guilherme34/dreamgen"
 CONTINUOUS_TRAINING_LORA = "./continuous-training-lora"
 DREAM_STORAGE_FILE = "old_dreams.json"
 NUM_RECALLED_DREAMS = 15
