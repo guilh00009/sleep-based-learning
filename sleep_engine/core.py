@@ -58,7 +58,7 @@ def sleep_and_dream():
             dream_model, 
             dream_tokenizer, 
             formatted_history, 
-            dream_count=5 
+            dream_count=17
         )
         
         # Limpeza Imediata do Modelo de Sonho
