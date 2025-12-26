@@ -1,3 +1,5 @@
+import unsloth
+from unsloth import FastLanguageModel
 import os
 import shutil
 import random
